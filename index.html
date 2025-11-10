@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>나의 이상형 찾기 테스트 v2</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Inter 폰트 CND (Tailwind 기본 폰트와 유사하게) */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+        }
+        /* 간단한 화면 전환 효과 */
+        .screen {
+            transition: opacity 0.3s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4 py-8">
+
+    <div id="app" class="max-w-lg w-full bg-white rounded-2xl shadow-xl overflow-hidden">
+        
+        <!-- 1. 시작 화면 -->
+        <div id="start-screen" class="screen p-8 md:p-12 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">나의 이상형 찾기 (v2)</h1>
+            <p class="text-lg text-gray-600 mb-8">
+                40개의 질문으로<br>당신의 진짜 이상형 코드를 분석합니다.
+            </p>
+            <div class="w-48 h-48 bg-blue-100 rounded-full mx-auto mb-8 flex items-center justify-center">
+                <span class="text-5xl">🧬</span>
+            </div>
+            <button id="start-button" class="w-full bg-blue-600 text-white text-lg font-bold py-4 rounded-lg shadow-lg hover:bg-blue-700 transition-colors duration-300 transform hover:scale-105">
+                테스트 시작하기
+            </button>
+        </div>
+
+        <!-- 2. 질문 화면 -->
+        <div id="quiz-screen" class="screen p-8 md:p-12 hidden">
+            <div class="mb-6">
+                <!-- 진행도 -->
+                <p id="progress-text" class="text-center text-blue-600 font-semibold text-sm">Q 1/40</p>
+                <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                    <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 2.5%"></div>
+                </div>
+            </div>
+            <!-- 질문 -->
+            <h2 id="question-title" class="text-xl md:text-2xl font-bold text-center mb-8 h-24 flex items-center justify-center">
+                <!-- JS로 질문 내용이 채워집니다 -->
+            </h2>
+            <!-- 5점 척도 선택지 -->
+            <div id="choices-container" class="flex flex-col gap-3">
+                <!-- JS로 선택지가 채워집니다 (5점 척도) -->
+            </div>
+        </div>
+
+        <!-- 3. 로딩 화면 -->
+        <div id="loading-screen" class="screen p-8 md:p-12 text-center hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">결과 분석 중...</h2>
+            <div class="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-blue-600 mx-auto mb-6"></div>
+            <p class="text-gray-600">40개의 답변을 바탕으로<br>가중치를 계산하여 코드를 조합하고 있습니다.</p>
+        </div>
+
+        <!-- 4. 결과 화면 -->
+        <div id="result-screen" class="screen p-8 md:p-12 text-center hidden">
+            <p class="text-gray-600 mb-2">당신의 이상형은...</p>
+            <h2 id="result-type-name" class="text-3xl md:text-4xl font-bold text-blue-700 mb-4">
+                <!-- JS로 결과 유형 이름이 채워집니다 -->
+            </h2>
+            <p id="result-type-code" class="text-lg font-semibold text-gray-500 mb-6">
+                <!-- JS로 결과 코드가 채워집니다 (예: LSHM) -->
+            </p>
+            
+            <div id="result-image" class="w-48 h-48 bg-gray-200 rounded-full mx-auto mb-6 flex items-center justify-center text-gray-500 overflow-hidden">
+                <img id="result-img-tag" src="" alt="결과 이미지" class="w-full h-full object-cover">
+            </div>
+
+            <p id="result-summary" class="text-xl font-medium text-gray-800 mb-4">
+                <!-- JS로 한 줄 요약이 채워집니다 -->
+            </p>
+            <p id="result-description" class="text-gray-600 mb-8">
+                <!-- JS로 상세 설명이 채워집니다 -->
+            </p>
+
+            <div class="flex flex-col gap-4">
+                <button id="share-button" class="w-full bg-yellow-400 text-gray-800 font-bold py-3 px-4 rounded-lg shadow-md hover:bg-yellow-500 transition-colors duration-300">
+                    결과 공유하기 (기능 구현 X)
+                </button>
+                <button id="restart-button" class="w-full bg-gray-200 text-gray-700 font-bold py-3 px-4 rounded-lg hover:bg-gray-300 transition-colors duration-300">
+                    테스트 다시하기
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DOM 요소 ---
+        const app = document.getElementById('app');
+        const startScreen = document.getElementById('start-screen');
+        const quizScreen = document.getElementById('quiz-screen');
+        const loadingScreen = document.getElementById('loading-screen');
+        const resultScreen = document.getElementById('result-screen');
+
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        
+        const progressText = document.getElementById('progress-text');
+        const progressBar = document.getElementById('progress-bar');
+        const questionTitle = document.getElementById('question-title');
+        const choicesContainer = document.getElementById('choices-container');
+        
+        const resultTypeName = document.getElementById('result-type-name');
+        const resultTypeCode = document.getElementById('result-type-code');
+        const resultImgTag = document.getElementById('result-img-tag');
+        const resultSummary = document.getElementById('result-summary');
+        const resultDescription = document.getElementById('result-description');
+
+        // --- 데이터 ---
+
+        // 1. 40개 질문
+        // 각 질문은 한쪽 극단(bias)을 지지합니다. 반대 답변은 반대(opposite) 코드에 점수를 줍니다.
+        const allQuestions = [
+            // Axis 1: D (Heavier) vs L (Slim)
+            { question: "듬직한 사람에게 안기는 것을 상상하면 설렌다.", bias: "D", opposite: "L" },
+            { question: "껴안았을 때 품이 넉넉한 사람이 좋다.", bias: "D", opposite: "L" },
+            { question: "슬림한 옷을 입었을 때 핏이 딱 떨어지는 사람이 매력적이다.", bias: "L", opposite: "D" },
+            { question: "뼈대가 가늘고 긴 손가락을 보면 설렌다.", bias: "L", opposite: "D" },
+            { question: "상대방이 '덩치 좋다'는 말을 들으면 칭찬처럼 들린다.", bias: "D", opposite: "L" },
+            { question: "바람이 불면 날아갈 것 같이 여리여리한 모습에 보호 본능을 느낀다.", bias: "L", opposite: "D" },
+            { question: "추운 겨울, 넉넉한 체형의 사람 옆에 있으면 더 따뜻할 것 같다.", bias: "D", opposite: "L" },
+            { question: "모델처럼 마른 체형이 자기관리를 잘하는 것처럼 보인다.", bias: "L", opposite: "D" },
+            { question: "통통한 볼살은 귀여움의 상징이다.", bias: "D", opposite: "L" },
+            { question: "날카로운 턱선을 가진 사람에게 시선이 간다.", bias: "L", opposite: "D" },
+
+            // Axis 2: B (Beard/Natural) vs S (Smooth/Clean)
+            { question: "자연스럽게 자란 수염은 남성미의 상징이다.", bias: "B", opposite: "S" },
+            { question: "털이 적당히 있는 팔다리가 섹시하다고 생각한다.", bias: "B", opposite: "S" },
+            { question: "매일 아침 깔끔하게 면도한 모습이 보기 좋다.", bias: "S", opposite: "B" },
+            { question: "부드럽고 매끈한 피부를 만지는 것을 선호한다.", bias: "S", opposite: "B" },
+            { question: "수염을 기르기 위해 관리하는 모습이 멋지다.", bias: "B", opposite: "S" },
+            { question: "왁싱이나 제모를 통해 깔끔함을 유지하는 것이 좋다.", bias: "S", opposite: "B" },
+            { question: "약간의 턱수염은 개성을 표현하는 좋은 방법이다.", bias: "B", opposite: "S" },
+            { question: "얼굴에 수염이 거칠게 닿는 느낌이 별로일 것 같다.", bias: "S", opposite: "B" },
+            { question: "구레나룻이나 콧수염이 잘 어울리는 사람이 좋다.", bias: "B", opposite: "S" },
+            { question: "내 이상형을 묘사할 때 '깔끔하다'는 인상이 매우 중요하다.", bias: "S", opposite: "B" },
+
+            // Axis 3: C (Short Hair) vs H (Long Hair)
+            { question: "짧은 머리는 단정하고 프로페셔널해 보인다.", bias: "C", opposite: "H" },
+            { question: "머리를 감고 말리는 데 시간이 오래 걸리지 않는 사람이 좋다.", bias: "C", opposite: "H" },
+            { question: "바람에 흩날리는 긴 머리카락을 보면 설렌다.", bias: "H", opposite: "C" },
+            { question: "머리를 묶거나 푸는 등 다양한 스타일링을 할 수 있는 긴 머리가 좋다.", bias: "H", opposite: "C" },
+            { question: "스포티한 숏컷 스타일이 활기차 보여 좋다.", bias: "C", opposite: "H" },
+            { question: "신비롭고 예술가적인 분위기는 긴 머리에서 나온다고 생각한다.", bias: "H", opposite: "C" },
+            { question: "귀가 드러나는 짧은 헤어스타일이 시원해 보이고 매력적이다.", bias: "C", opposite: "H" },
+            { question: "상대방의 머리카락을 쓰다듬는 것을 좋아한다면 긴 머리가 더 좋다.", bias: "H", opposite: "C" },
+            { question: "격식 있는 자리에 갈 때, 짧은 머리가 더 세련돼 보인다.", bias: "C", opposite: "H" },
+            { question: "찰랑거리는 머릿결을 유지하기 위해 노력하는 모습이 보기 좋다.", bias: "H", opposite: "C" },
+
+            // Axis 4: M (Muscle) vs F (Soft/Fat)
+            { question: "단단한 근육질의 몸매를 보면 감탄이 나온다.", bias: "M", opposite: "F" },
+            { question: "함께 헬스장에서 운동하는 데이트를 즐길 수 있을 것 같다.", bias: "M", opposite: "F" },
+            { question: "껴안았을 때 딱딱한 근육보다 말랑하고 부드러운 느낌이 좋다.", bias: "F", opposite: "M" },
+            { question: "맛있는 음식을 행복하게 먹는 '먹방' 스타일의 사람이 좋다.", bias: "F", opposite: "M" },
+            { question: "무거운 짐을 번쩍 드는 근육질의 모습이 멋지다.", bias: "M", opposite: "F" },
+            { question: "엄격한 식스팩보다는 편안한 뱃살을 가진 사람이 인간적이고 좋다.", bias: "F", opposite: "M" },
+            { question: "자기관리를 위해 식단과 운동을 엄격하게 하는 모습이 존경스럽다.", bias: "M", opposite: "F" },
+            { question: "껴안을 때, 단단한 근육보다 부드러운 살이 더 포근할 것 같다.", bias: "F", opposite: "M" },
+            { question: "셔츠 밖으로 드러나는 팔 근육에 시선이 간다.", bias: "M", opposite: "F" },
+            { question: "통통하고 말랑한 뱃살을 만지는 것을 좋아한다.", bias: "F", opposite: "M" }
+        ];
+
+        // 5점 척도 선택지
+        const likertChoices = [
+            { text: "매우 그렇다", score: 2 },
+            { text: "그렇다", score: 1 },
+            { text: "중간", score: 0 },
+            { text: "아니다", score: -1 },
+            { text: "매우 아니다", score: -2 }
+        ];
+        
+        // 2. 결과 (16가지 유형 - 이전 버전과 동일)
+        const results = {
+            "DBCM": { name: "듬직한 캡틴형", summary: "리더십과 신뢰감이 넘치는 든든한 스타일", description: "체격과 근육, 그리고 수염까지. 당신은 듬직함의 모든 요소를 갖춘 리더형에게 끌립니다. 캡틴 아메리카처럼 신뢰를 주는 듬직함이 매력 포인트입니다.", image: "https://placehold.co/300x300/3B82F6/FFFFFF?text=DBCM" },
+            "DBCF": { name: "푸근한 곰돌이형", summary: "넉넉한 웃음과 따뜻한 포용력을 지닌 이상형", description: "당신은 겉모습의 화려함보다는 기댈 수 있는 푸근함과 따뜻한 마음에 매력을 느낍니다. 함께 있으면 마음이 편안해지는, 곰인형 같은 사람입니다.", image: "https://placehold.co/300x300/F59E0B/FFFFFF?text=DBCF" },
+            "DBHM": { name: "야성적인 바이킹형", summary: "거친 매력과 강인함이 공존하는 스타일", description: "기획안의 '강철 매력형'과 유사합니다. 긴 머리와 수염, 근육질의 조합은 원초적인 야성미를 느끼게 합니다. 통제되지 않을 것 같은 거친 매력에 끌립니다.", image: "https://placehold.co/300x300/EF4444/FFFFFF?text=DBHM" },
+            "DBHF": { name: "여유로운 예술가형", summary: "자기만의 세계가 확고한 자유로운 영혼", description: "넉넉한 체형에 긴 머리와 수염을 한 당신의 이상형은 세상의 기준에 얽매이지 않습니다. 자신만의 철학을 가진 자유로운 예술가적 감성이 매력입니다.", image: "https://placehold.co/300x300/A855F7/FFFFFF?text=DBHF" },
+            "DSCM": { name: "힘숨찐 피트형", summary: "평소엔 순하지만, 알고 보면 대단한 근육의 소유자", description: "기획안의 '귀여운 피트형'과 유사합니다. 겉보기엔 그저 듬직하고 순해 보이지만, 사실은 꾸준한 운동으로 다져진 근육을 숨기고 있는 반전 매력의 소유자입니다.", image: "https://placehold.co/300x300/10B981/FFFFFF?text=DSCM" },
+            "DSCF": { name: "따뜻한 포근형", summary: "듬직함이 매력 포인트! 기댈 수 있는 사람", description: "기획안의 '따뜻한 포근형'입니다. 깔끔한 인상에 듬직한 체형, 그리고 포근한 성격까지. 당신은 화려함보다는 안정감과 따뜻함을 주는 사람에게 큰 매력을 느낍니다.", image: "https://placehold.co/300x300/EC4899/FFFFFF?text=DSCF" },
+            "DSHM": { name: "귀여운 피트형", summary: "포근하지만 든든한 연인상", description: "기획안의 '귀여운 피트형'입니다. 긴 머리로 부드러움을 더했지만, 속은 듬직한 근육으로 채워져 있습니다. 포근함과 든든함을 동시에 갖춘 매력적인 유형입니다.", image: "https://placehold.co/300x300/6366F1/FFFFFF?text=DSHM" },
+            "DSHF": { name: "말랑콩떡 순둥이형", summary: "보기만 해도 기분 좋아지는 순한 매력", description: "깔끔한 인상에 포근한 체형, 그리고 부드러운 성격. 당신은 마치 말랑한 떡처럼 순하고 부드러운 매력을 가진 사람에게 끌립니다. 함께 있으면 웃음이 끊이지 않습니다.", image: "https://placehold.co/300x300/FDE047/FFFFFF?text=DSHF" },
+            "LBCM": { name: "샤프한 트레이너형", summary: "자기관리가 철저한 섹시한 남자", description: "슬림한 체형이지만 근육으로 다져져 있고, 짧은 머리와 수염으로 남성미를 더했습니다. 자기관리에 철저한 모습이 프로페셔널하고 섹시하게 느껴집니다.", image: "https://placehold.co/300x300/14B8A6/FFFFFF?text=LBCM" },
+            "LBCF": { name: "까칠한 힙스터형", summary: "마른 체형에 숨겨진 날카로운 센스", description: "기획안의 '터프 힙스터형'과 유사할 수 있습니다. 마른 체형과 수염, 짧은 머리의 조합은 어딘가 모르게 날카롭고 예민한 힙스터의 감성을 풍깁니다. 툭툭 내뱉지만 센스 있는 모습에 끌립니다.", image: "https://placehold.co/300x300/6B7280/FFFFFF?text=LBCF" },
+            "LBHM": { name: "도도한 모델형", summary: "차갑지만 다정할 듯한 반전 매력", description: "기획안의 '도도한 모델형'입니다. 마른 근육질의 몸, 긴 머리와 수염은 완벽한 모델핏을 보여줍니다. 차가워 보이는 첫인상과 달리, 알고 보면 다정한 반전 매력을 기대하게 합니다.", image: "https://placehold.co/300x300/8B5CF6/FFFFFF?text=LBHM" },
+            "LBHF": { name: "청초 예술가형", summary: "살짝 허무하지만 매력적인 창작자", description: "기획안의 '청초 예술가형'입니다. 마른 체형과 긴 머리, 부드러운 인상이 어우러져 어딘가 보호 본능을 자극합니다. 자신만의 세계에서 창작 활동을 하는 예술가적 매력이 있습니다.", image: "https://placehold.co/300x300/22C55E/FFFFFF?text=LBHF" },
+            "LSCM": { name: "시크한 조각미남형", summary: "완벽하게 다듬어진 차가운 도시 남자", description: "깔끔한 인상, 슬림하고 탄탄한 근육질 몸매. 마치 그리스 조각상처럼 완벽하게 다듬어진 모습입니다. 차가운 도시 남자 같지만, 그 속의 열정을 상상하게 합니다.", image: "https://placehold.co/300x300/06B6D4/FFFFFF?text=LSCM" },
+            "LSCF": { name: "미니멀리스트 훈남형", summary: "깔끔하고 담백한, 소금빵 같은 매력", description: "과하지 않은 매력. 마른 체형에 깔끔한 스타일은 담백한 미니멀리스트를 연상시킵니다. 화려하지 않아도 자꾸만 눈길이 가는 '훈남' 스타일입니다.", image: "https://placehold.co/300x300/94A3B8/FFFFFF?text=LSCF" },
+            "LSHM": { name: "감성 피트니스형", summary: "근육 속에 숨은 감정선, 묘한 매력", description: "기획안의 '감성 피트니스형'입니다. 마른 근육질 몸매와 긴 머리의 묘한 조합. 운동을 즐기는 탄탄함과 예술가적인 감수성이 공존하는, 예측하기 어려운 매력을 가졌습니다.", image: "https://placehold.co/300x300/D946EF/FFFFFF?text=LSHM" },
+            "LSHF": { name: "감성 몽환형", summary: "고양이 같은 매력의 예술가", description: "기획안의 '감성 몽환형'입니다. 마른 체형, 깔끔한 인상, 긴 머리. 어딘가 현실과 동떨어진 듯 몽환적인 분위기를 풍깁니다. 알 수 없는 매력에 자꾸만 빠져듭니다.", image: "https://placehold.co/300x300/818CF8/FFFFFF?text=LSHF" }
+        };
+
+        // --- 상태 변수 ---
+        let currentQuestionIndex = 0;
+        let shuffledQuestions = [];
+        // 4가지 축, 8개 코드의 점수를 저장
+        let scores = { D: 0, L: 0, B: 0, S: 0, C: 0, H: 0, M: 0, F: 0 };
+
+        // --- 함수 ---
+
+        // 화면 전환 함수
+        function showScreen(screenId) {
+            [startScreen, quizScreen, loadingScreen, resultScreen].forEach(screen => {
+                screen.classList.add('hidden');
+                screen.classList.remove('opacity-100');
+            });
+            
+            const targetScreen = document.getElementById(screenId);
+            if (targetScreen) {
+                targetScreen.classList.remove('hidden');
+                setTimeout(() => targetScreen.classList.add('opacity-100'), 50);
+            }
+        }
+
+        // 질문 섞기 함수 (Fisher-Yates Shuffle)
+        function shuffleArray(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [
+                    array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        // 질문 표시 함수
+        function showQuestion() {
+            if (currentQuestionIndex >= shuffledQuestions.length) {
+                // 40개 질문 완료
+                showLoading();
+                return;
+            }
+
+            // 진행도 업데이트
+            const progress = ((currentQuestionIndex + 1) / shuffledQuestions.length) * 100;
+            progressText.textContent = `Q ${currentQuestionIndex + 1}/${shuffledQuestions.length}`;
+            progressBar.style.width = `${progress}%`;
+
+            // 질문 표시
+            const currentQuestion = shuffledQuestions[currentQuestionIndex];
+            questionTitle.textContent = currentQuestion.question;
+
+            // 5점 척도 버튼 생성
+            choicesContainer.innerHTML = '';
+            likertChoices.forEach(choice => {
+                const button = document.createElement('button');
+                button.className = "choice-btn block w-full p-4 bg-gray-50 hover:bg-blue-100 border border-gray-300 rounded-lg text-lg font-medium transition-all duration-150 cursor-pointer shadow-sm text-gray-800";
+                button.textContent = choice.text;
+                
+                button.addEventListener('click', () => selectAnswer(choice.score, currentQuestion.bias, currentQuestion.opposite));
+                choicesContainer.appendChild(button);
+            });
+        }
+
+        // 답변 선택 및 점수 계산 함수
+        function selectAnswer(scoreValue, biasCode, oppositeCode) {
+            // scoreValue: +2, +1, 0, -1, -2
+            
+            if (scoreValue > 0) {
+                // 긍정 답변: bias 코드에 점수 추가
+                scores[biasCode] += scoreValue;
+            } else if (scoreValue < 0) {
+                // 부정 답변: opposite 코드에 점수 추가 (음수를 양수로 변환)
+                scores[oppositeCode] += Math.abs(scoreValue);
+            }
+            // scoreValue가 0 (중간)이면 아무것도 하지 않음
+
+            currentQuestionIndex++; // 다음 질문으로
+            showQuestion(); // 다음 질문 표시
+        }
+
+        // 로딩 화면 표시 함수
+        function showLoading() {
+            showScreen('loading-screen');
+            // 2초 후 결과 표시 (계산하는 척)
+            setTimeout(showResult, 2000);
+        }
+
+        // 결과 표시 함수
+        function showResult() {
+            // 최종 점수 계산 및 코드 조합
+            let finalCode = "";
+            finalCode += (scores.D >= scores.L) ? 'D' : 'L';
+            finalCode += (scores.B >= scores.S) ? 'B' : 'S';
+            finalCode += (scores.C >= scores.H) ? 'C' : 'H';
+            finalCode += (scores.M >= scores.F) ? 'M' : 'F';
+
+            // (디버깅용) 콘솔에 최종 점수 출력
+            console.log("최종 점수:", scores);
+            console.log("최종 코드:", finalCode);
+
+            // 코드에 맞는 결과 가져오기
+            const result = results[finalCode] || { 
+                name: "알 수 없는 유형",
+                summary: "당신은 정말 특별한 취향을 가졌군요!",
+                description: "결과를 찾을 수 없습니다. 테스트를 다시 시도해보세요.",
+                image: "https://placehold.co/300x300/AAAAAA/FFFFFF?text=ERROR"
+            };
+
+            // 결과 화면에 데이터 바인딩
+            resultTypeName.textContent = result.name;
+            resultTypeCode.textContent = finalCode;
+            resultImgTag.src = result.image;
+            resultImgTag.alt = result.name;
+            resultSummary.textContent = `"${result.summary}"`;
+            resultDescription.textContent = result.description;
+
+            // 결과 화면 표시
+            showScreen('result-screen');
+        }
+
+        // 테스트 시작 함수
+        function startGame() {
+            currentQuestionIndex = 0;
+            // 점수 초기화
+            scores = { D: 0, L: 0, B: 0, S: 0, C: 0, H: 0, M: 0, F: 0 };
+            // 질문 섞기
+            shuffledQuestions = shuffleArray([...allQuestions]);
+            
+            showScreen('quiz-screen');
+            showQuestion();
+        }
+
+        // 테스트 다시 시작 함수
+        function restartGame() {
+            showScreen('start-screen');
+        }
+
+        // --- 이벤트 리스너 ---
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', restartGame);
+
+        // --- 초기화 ---
+        document.addEventListener('DOMContentLoaded', () => {
+            showScreen('start-screen');
+        });
+
+    </script>
+</body>
+</html>
